@@ -5,7 +5,6 @@ var util = require('util');
 var minimist = require('minimist');
 var debug = require('debug')('cloudwatchlogs');
 var cwlogger = require('./cwlogger.js');
-var Deque = require('collections/deque');
 
 function CloudWatchLogsStream (opts) {
   debug('opts', opts);
@@ -16,7 +15,7 @@ function CloudWatchLogsStream (opts) {
   this.sequenceToken = null;
   this.cwlogger = cwlogger(opts);
   this.firstMsg = null;
-  this.queue = new Deque();
+  this.queue = [];
   this.timeout = opts.timeout ? Number(opts.timeout) * 1000 : null;
   this.timer = null;
   this.startTimer();
@@ -55,16 +54,15 @@ function write (chunk, encoding, done) {
 
 CloudWatchLogsStream.prototype.sendEvents = function (cb) {
   var self = this;
-  var events = self.queue.toArray();
   self.clearTimer();
 
-  if (events.length === 0) {
+  if (self.queue.length === 0) {
     self.startTimer();
     return setImmediate(cb);
   }
 
   var params = {
-    logEvents: events,
+    logEvents: self.queue,
     logGroupName: self.logGroupName,
     logStreamName: self.logStreamName,
     sequenceToken: self.sequenceToken
@@ -76,7 +74,7 @@ CloudWatchLogsStream.prototype.sendEvents = function (cb) {
       return self.emit('error', err);
     }
 
-    self.queue.clear();
+    self.queue = [];
     self.sequenceToken = data.nextSequenceToken;
     self.startTimer();
     if (cb) cb();
