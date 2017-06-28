@@ -58,7 +58,10 @@ CloudWatchLogsStream.prototype.sendEvents = function (cb) {
 
   if (self.queue.length === 0) {
     self.startTimer();
-    return setImmediate(cb);
+    if (cb) {
+      setImmediate(cb);
+    }
+    return;
   }
 
   var params = {
